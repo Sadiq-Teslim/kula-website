@@ -1,4 +1,65 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,400;0,700;1,400&display=swap');
 @import "tailwindcss";
+/* --- Splash Screen Styles --- */
+.splash-container {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  /* New beautiful background gradient */
+  background: linear-gradient(180deg, #FEFBF6 0%, #F8F4EC 100%);
+  opacity: 1;
+  transition: opacity 500ms ease-in-out;
+  font-family: 'Poppins', sans-serif;
+}
+
+/* This class is added to start the fade-out */
+.splash-container.fading {
+  opacity: 0;
+}
+
+/* The animated logo */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.splash-logo {
+  width: 150px;
+  height: 150px;
+  margin-bottom: 20px;
+  animation: fadeIn 1s ease-out forwards, breathe 4s ease-in-out 1s infinite;
+}
+
+/* The beautiful title font */
+.splash-title {
+  font-size: 52px;
+  font-weight: 700;
+  color: #4AA8A4;
+  animation: fadeIn 1s ease-out 200ms forwards;
+  opacity: 0;
+}
+
+/* The classic, italicized tagline */
+.splash-subtitle {
+  font-size: 18px;
+  font-style: italic;
+  font-weight: 400;
+  color: #333333;
+  margin-top: 10px;
+  text-align: center;
+  padding: 0 20px;
+  animation: fadeIn 1s ease-out 400ms forwards;
+  opacity: 0;
+}
+
+/* --- Keep your existing .typing-indicator styles below this --- */
 .typing-indicator {
   display: flex;
   align-items: center;
