@@ -3,7 +3,7 @@ import axios from "axios";
 
 // --- Server Configuration ---
 // const SERVER_IP = "192.168.57.168"; // Your IP Address
-const SERVER_URL = `http://kula-server.onrender.com/interact`;
+const SERVER_URL = `https://kula-server.onrender.com/interact`;
 
 // --- Web Speech Recognition ---
 const SpeechRecognition =
