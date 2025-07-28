@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import SplashScreen from './SplashScreen';
 import MainApp from './MainApp';
 
+
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [isFading, setIsFading] = useState(false);
