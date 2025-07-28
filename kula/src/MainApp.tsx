@@ -59,13 +59,11 @@ export default function MainApp() {
     };
     loadModel();
 
-    // --- VOICE RECOGNITION FIX: Set up listeners inside useEffect ---
+    // --- VOICE RECOGNITION FIX: Set up listeners inside useEffect for stability ---
     const handleRecognitionResult = (event: SpeechRecognitionEvent) => {
       const spokenText = event.results[0][0].transcript;
-      setInputText(spokenText);
-      setTimeout(() => {
-        handleSend();
-      }, 0);
+      setConversation((prev) => [...prev, { role: "user", text: spokenText }]);
+      sendToServer(spokenText);
     };
     const handleRecognitionStart = () => setIsListening(true);
     const handleRecognitionEnd = () => setIsListening(false);
@@ -80,7 +78,7 @@ export default function MainApp() {
       recognition.onend = null;
       recognition.onresult = null;
     };
-  }, []);
+  }, []); // Empty dependency array ensures this runs only once
 
   // Auto-scroll chat
   useEffect(() => {
@@ -126,7 +124,7 @@ export default function MainApp() {
       await new Promise((resolve) => {
         img.onload = resolve;
       });
-      const prediction = (await teachableMachineModel?.predict(img)) ?? [];
+      const prediction = await teachableMachineModel?.predict(img) ?? [];
       const topPrediction = prediction.reduce((prev, current) =>
         prev.probability > current.probability ? prev : current
       );
@@ -234,19 +232,25 @@ export default function MainApp() {
         </div>
         <div className="p-3 bg-white border-t border-gray-200">
           {attachedImage && (
-            <div className="mb-2">
+            <div className="p-2 relative w-fit">
               <img
                 src={attachedImage.previewUrl}
                 alt="Attachment preview"
-                className="max-h-32 rounded-lg"
+                className="h-16 w-16 rounded-lg object-cover"
               />
+              <button
+                onClick={() => setAttachedImage(null)}
+                className="absolute -top-1 -right-1 bg-gray-700 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold border-2 border-white"
+              >
+                X
+              </button>
             </div>
           )}
-          <div className="flex items-center">
+          <div className="flex items-start">
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={!teachableMachineModel || isLoading}
-              className="p-2"
+              className="p-2 mt-2"
             >
               <img
                 src="/camera-icon.png"
@@ -257,7 +261,7 @@ export default function MainApp() {
             <button
               onClick={() => cameraInputRef.current?.click()}
               disabled={!teachableMachineModel || isLoading}
-              className="p-2"
+              className="p-2 mt-2"
             >
               <img
                 src="/live-camera-icon.png"
@@ -272,7 +276,7 @@ export default function MainApp() {
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Type a message..."
-                className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#4AA8A4] resize-none overflow-y-hidden"
+                className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#4AA8A4] resize-none overflow-y-hidden max-h-24"
                 rows={1}
                 disabled={isLoading}
               />
@@ -284,7 +288,7 @@ export default function MainApp() {
                   : handleSend
               }
               disabled={isLoading}
-              className={`w-12 h-12 rounded-full flex justify-center items-center transition-colors shrink-0 ${
+              className={`w-12 h-12 rounded-full flex justify-center items-center transition-colors shrink-0 mt-1 ${
                 isListening ? "bg-[#F4A261]" : "bg-[#4AA8A4]"
               }`}
             >
