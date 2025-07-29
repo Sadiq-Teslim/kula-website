@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import axios from "axios";
 import Sidebar from "./Sidebar";
 
@@ -38,7 +38,7 @@ export default function MainApp() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null); // Ref for the new textarea
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Load Model & Set Up Voice Recognition Listeners
   useEffect(() => {
@@ -124,7 +124,7 @@ export default function MainApp() {
       await new Promise((resolve) => {
         img.onload = resolve;
       });
-      const prediction = await teachableMachineModel?.predict(img) ?? [];
+      const prediction = (await teachableMachineModel?.predict(img)) ?? [];
       const topPrediction = prediction.reduce((prev, current) =>
         prev.probability > current.probability ? prev : current
       );
@@ -143,13 +143,15 @@ export default function MainApp() {
     setAttachedImage(null);
   };
 
-  const sendToServer = async (message: string) => {
+  const sendToServer = useCallback(async (message: string) => {
     setIsLoading(true);
     setConversation((prev) => [...prev, { role: "typing", text: "..." }]);
     try {
-      const response = await axios.post<{ reply: string }>(SERVER_URL, {
-        message,
-      });
+      const response = await axios.post<{ reply: string }>(
+        SERVER_URL,
+        { message },
+        { timeout: 60000 }
+      );
       setConversation((prev) => [
         ...prev.slice(0, -1),
         { role: "ai", text: response.data.reply },
@@ -158,13 +160,15 @@ export default function MainApp() {
       console.error("Server Error:", error);
       setConversation((prev) => [
         ...prev.slice(0, -1),
-        { role: "ai", text: "Connection error. Is the server running?" },
+        {
+          role: "ai",
+          text: "Mama, I'm very sorry for the delayed response. I'm having issues with network. Can you please try again?",
+        },
       ]);
     } finally {
       setIsLoading(false);
     }
-  };
-
+  }, []);
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();

@@ -44,8 +44,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <span>Settings (Soon)</span>
           </a>
           <a href="#" className={navLinkClasses}>
-            <img src="/support-icon.png" alt="Support" className="w-5 h-5 mr-3" />
-            <span>Contact Support (Soon)</span>
+            <img src="/profile-icon.png" alt="Support" className="w-5 h-5 mr-3" />
+            <span>Profile (Soon)</span>
           </a>
         </nav>
 
