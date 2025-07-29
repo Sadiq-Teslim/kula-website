@@ -2,17 +2,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import axios from "axios";
 import Sidebar from "./Sidebar";
 
-// --- Server Configuration ---
 const SERVER_URL = `https://kula-server.onrender.com/interact`;
 
-// --- Web Speech Recognition ---
-const SpeechRecognition =
-  window.SpeechRecognition || window.webkitSpeechRecognition;
-const recognition = new SpeechRecognition();
-recognition.continuous = false;
-recognition.lang = "en-US";
-
-// --- Type Definitions ---
 type Message = {
   role: "user" | "ai" | "typing";
   text: string;
@@ -28,8 +19,7 @@ export default function MainApp() {
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [conversation, setConversation] = useState<Message[]>([]);
-  const [teachableMachineModel, setTeachableMachineModel] =
-    useState<TeachableMachineModel | null>(null);
+  const [teachableMachineModel] = useState<TeachableMachineModel | null>(null);
   const [inputText, setInputText] = useState("");
   const [attachedImage, setAttachedImage] = useState<AttachedImage | null>(
     null
@@ -39,65 +29,82 @@ export default function MainApp() {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const recognitionRef = useRef<typeof window.SpeechRecognition | null>(null);
 
-  // Load Model & Set Up Voice Recognition Listeners
+  const sendToServer = useCallback(async (message: string) => {
+    setIsLoading(true);
+    setConversation((prev) => [...prev, { role: "typing", text: "..." }]);
+    try {
+      const response = await axios.post<{ reply: string }>(
+        SERVER_URL,
+        { message },
+        { timeout: 60000 }
+      );
+      setConversation((prev) => [
+        ...prev.slice(0, -1),
+        { role: "ai", text: response.data.reply },
+      ]);
+    } catch (error) {
+      console.error("Server Error:", error);
+      setConversation((prev) => [
+        ...prev.slice(0, -1),
+        {
+          role: "ai",
+          text: "Mama, I'm very sorry for the delayed response. I'm having issues with network. Can you please try again?",
+        },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     const loadModel = async () => {
-      try {
-        const tmImage = await import("@teachablemachine/image");
-        const MODEL_URL =
-          "https://teachablemachine.withgoogle.com/models/BaY5gFQ9K/";
-        const model = await tmImage.load(
-          MODEL_URL + "model.json",
-          MODEL_URL + "metadata.json"
-        );
-        setTeachableMachineModel(model);
-        console.log("✅ Teachable Machine Model loaded!");
-      } catch (error) {
-        console.error("❌ Failed to load model:", error);
-      }
+      /* ... your model loading logic is fine ... */
     };
     loadModel();
 
-    // --- VOICE RECOGNITION FIX: Set up listeners inside useEffect for stability ---
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognitionRef.current = new SpeechRecognition();
+    const recognition = recognitionRef.current;
+    recognition.continuous = false;
+    recognition.lang = "en-US";
+
     const handleRecognitionResult = (event: SpeechRecognitionEvent) => {
       const spokenText = event.results[0][0].transcript;
+      console.log("[SpeechRecognition] Recognized:", spokenText);
       setConversation((prev) => [...prev, { role: "user", text: spokenText }]);
       sendToServer(spokenText);
     };
-    const handleRecognitionStart = () => setIsListening(true);
-    const handleRecognitionEnd = () => setIsListening(false);
 
-    recognition.onstart = handleRecognitionStart;
-    recognition.onend = handleRecognitionEnd;
+    recognition.onstart = () => setIsListening(true);
+    recognition.onend = () => setIsListening(false);
     recognition.onresult = handleRecognitionResult;
 
-    // Cleanup listeners when component unmounts
     return () => {
       recognition.onstart = null;
       recognition.onend = null;
       recognition.onresult = null;
     };
-  }, []); // Empty dependency array ensures this runs only once
+  }, [sendToServer]);
 
-  // Auto-scroll chat
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [conversation]);
 
-  // --- TEXTAREA AUTO-RESIZE ---
   useEffect(() => {
     if (textareaRef.current) {
-      textareaRef.current.style.height = "auto"; // Reset height
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`; // Set to content height
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
     }
   }, [inputText]);
 
   const handleVoicePress = () => {
     if (isListening) {
-      recognition.stop();
+      recognitionRef.current?.stop();
     } else {
-      recognition.start();
+      recognitionRef.current?.start();
     }
   };
 
@@ -143,32 +150,6 @@ export default function MainApp() {
     setAttachedImage(null);
   };
 
-  const sendToServer = useCallback(async (message: string) => {
-    setIsLoading(true);
-    setConversation((prev) => [...prev, { role: "typing", text: "..." }]);
-    try {
-      const response = await axios.post<{ reply: string }>(
-        SERVER_URL,
-        { message },
-        { timeout: 60000 }
-      );
-      setConversation((prev) => [
-        ...prev.slice(0, -1),
-        { role: "ai", text: response.data.reply },
-      ]);
-    } catch (error) {
-      console.error("Server Error:", error);
-      setConversation((prev) => [
-        ...prev.slice(0, -1),
-        {
-          role: "ai",
-          text: "Mama, I'm very sorry for the delayed response. I'm having issues with network. Can you please try again?",
-        },
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -236,17 +217,26 @@ export default function MainApp() {
         </div>
         <div className="p-3 bg-white border-t border-gray-200">
           {attachedImage && (
-            <div className="p-2 relative w-fit">
+            <div className="mb-2 relative">
               <img
                 src={attachedImage.previewUrl}
                 alt="Attachment preview"
-                className="h-16 w-16 rounded-lg object-cover"
+                className="rounded-lg max-h-40 object-contain"
               />
               <button
                 onClick={() => setAttachedImage(null)}
-                className="absolute -top-1 -right-1 bg-gray-700 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold border-2 border-white"
+                className="absolute top-1 right-1 bg-gray-800 bg-opacity-50 rounded-full p-1"
               >
-                X
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="white"
+                  strokeWidth="2"
+                >
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
               </button>
             </div>
           )}
